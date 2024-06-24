@@ -2,11 +2,14 @@
 
 This is a simple implementation of UDP hole punching using AWS Lambda and API Gateway.
 
-Open the **index.html** from your browser and see it in action.
+## How To Run
+
+Just open the **index.html** from your browser and see it in action.
+All backend services are hosted on AWS.
 
 If you want to deploy it yourself, follow the instructions below.
 
-## Pre-requisites
+## Pre-Requisites
 
 - Run **stun_server.py** in UDP port (application port is: 3478 but you can change it in the code) in your server.
 
@@ -26,14 +29,7 @@ $ python3 deploy_script.py
 
 While running the script, you will be asked to provide a stack name, AWS region, and a service name. The stack name is the name of the CloudFormation stack that will be created. The service name is the name of the service that will be created. The AWS region is the region where the stack will be created.
 
-You can proceed with the default values except:
-    
-    GetGroup has no authentication. Is this okay? [y/N]: y
-
-This is because the API Gateway does not have any authentication. You can choose to add authentication if you want.
-
-Configuring SAM deploy
-======================
+While running the script, you will see the following output:
 
     Looking for config file [samconfig.toml] :  Not found
 
@@ -49,6 +45,13 @@ Configuring SAM deploy
     #Preserves the state of previously provisioned resources when an operation fails
     Disable rollback [y/N]: N
     GetGroup has no authentication. Is this okay? [y/N]: y
+
+You can proceed with the default values except:
+    
+    GetGroup has no authentication. Is this okay? [y/N]: y
+
+This is because the API Gateway does not have any authentication. You can choose to add authentication if you want.
+
 
 ## Hosting the website remotely
 
