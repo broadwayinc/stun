@@ -2,7 +2,7 @@
 
 This is a simple implementation of UDP hole punching using AWS Lambda and API Gateway.
 
-## How To Run
+# How To Run
 
 Just open the **index.html** from your browser and see it in action.
 All backend services are hosted on AWS.
