@@ -1,0 +1,7 @@
+- AmazonSQSFullAccess
+- AmazonSNSFullAccess
+- AmazonDynamoDBFullAccess
+- DynamoDBStreamReadPolicy:
+        TableName: "*"
+        StreamName: "*"
+- AWSLambda_FullAccess

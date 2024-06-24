@@ -1,0 +1,22 @@
+PublicApi:
+  Type: AWS::Serverless::Api
+  Properties:
+    Description: public api.
+    StageName: api
+    Name: !Sub "${AWS::StackName}-public"
+    BinaryMediaTypes:
+      - multipart~1form-data
+      - application~1octet-stream
+    MinimumCompressionSize: 5242880
+    Cors:
+      AllowHeaders: "'Content-Meta, Access-Control-Allow-Headers, Origin, Accept, X-Requested-With, Content-Type, Content-Length, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization'"
+      AllowOrigin: "'*'"
+    GatewayResponses:
+      DEFAULT_4xx:
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"
+      DEFAULT_5xx:
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"

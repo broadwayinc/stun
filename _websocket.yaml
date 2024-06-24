@@ -1,0 +1,345 @@
+WebsocketGroup231121:
+  Type: AWS::DynamoDB::Table
+  DeletionPolicy: Retain
+  UpdateReplacePolicy: Retain
+  Properties:
+    BillingMode: PAY_PER_REQUEST
+    StreamSpecification:
+      StreamViewType: NEW_AND_OLD_IMAGES
+
+    AttributeDefinitions:
+      - AttributeName: srvc # service id
+        AttributeType: S
+
+      - AttributeName: rid # room id
+        AttributeType: S
+
+      - AttributeName: cnt # member count
+        AttributeType: N
+
+    KeySchema:
+      - AttributeName: srvc
+        KeyType: HASH
+      - AttributeName: rid
+        KeyType: RANGE
+
+    GlobalSecondaryIndexes:
+      - IndexName: srvc-cnt
+        KeySchema:
+          - AttributeName: srvc
+            KeyType: HASH
+          - AttributeName: cnt
+            KeyType: RANGE
+        Projection:
+          ProjectionType: KEYS_ONLY
+
+StreamWebsocketGroup:
+  Type: AWS::Serverless::Function
+  Properties:
+    Timeout: 15
+    MemorySize: 1024
+    Description: stream table
+    CodeUri: ws/stream_group/
+    Environment:
+      Variables:
+        # <__variables>
+    Policies:
+      # <__policies>
+    Events:
+      Stream:
+        Type: DynamoDB
+        Properties:
+          Stream: !GetAtt WebsocketGroup231121.StreamArn
+          BatchSize: 100
+          StartingPosition: TRIM_HORIZON
+    Layers:
+      - !Ref DatabaseInterfacePy
+
+WebsocketConnection231120:
+  Type: AWS::DynamoDB::Table
+  DeletionPolicy: Retain
+  UpdateReplacePolicy: Retain
+  Properties:
+    BillingMode: PAY_PER_REQUEST
+    StreamSpecification:
+      StreamViewType: NEW_AND_OLD_IMAGES
+
+    AttributeDefinitions:
+      - AttributeName: cid # connection id
+        AttributeType: S
+
+      - AttributeName: uid # user id
+        AttributeType: S
+
+      - AttributeName: rid # room id
+        AttributeType: S
+
+    KeySchema:
+      - AttributeName: cid
+        KeyType: HASH
+
+      - AttributeName: uid
+        KeyType: RANGE
+
+    GlobalSecondaryIndexes:
+      # subscribers by blocked and group
+      - IndexName: uid-cid
+        KeySchema:
+          - AttributeName: uid
+            KeyType: HASH
+          - AttributeName: cid
+            KeyType: RANGE
+        Projection:
+          NonKeyAttributes:
+            - rid
+          ProjectionType: INCLUDE
+
+      - IndexName: rid-cid
+        KeySchema:
+          - AttributeName: rid
+            KeyType: HASH
+          - AttributeName: cid
+            KeyType: RANGE
+        Projection:
+          ProjectionType: KEYS_ONLY
+
+WSFanSNS:
+  Type: AWS::SNS::Topic
+  Properties:
+    TopicName: !Sub "${AWS::StackName}-ws-fan-topic"
+
+# downstream
+FanWebsocket:
+  Type: AWS::Serverless::Function
+  Properties:
+    Timeout: 15
+    MemorySize: 2048
+    Description: fans websocket
+    CodeUri: ws/fanout/
+    Policies:
+      # <__policies>
+      - Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - execute-api:ManageConnections
+            Resource:
+              - !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*/*/*
+    Environment:
+      Variables:
+        # <__variables>
+
+    Layers:
+      - !Ref DatabaseInterfacePy
+
+    Events:
+      SNSTopicEvent:
+        Type: SNS
+        Properties:
+          Topic: !Ref WSFanSNS
+
+StreamWebsocketConnection:
+  Type: AWS::Serverless::Function
+  Properties:
+    Timeout: 15
+    MemorySize: 1024
+    Description: stream table
+    CodeUri: ws/stream_connection/
+    Environment:
+      Variables:
+        # <__variables>
+    Policies:
+      # <__policies>
+    Events:
+      Stream:
+        Type: DynamoDB
+        Properties:
+          Stream: !GetAtt WebsocketConnection231120.StreamArn
+          BatchSize: 100
+          StartingPosition: TRIM_HORIZON
+    Layers:
+      - !Ref DatabaseInterfacePy
+
+# sqs
+
+DownstreamWebsocketQueue:
+  Type: AWS::SQS::Queue
+  Properties:
+    MessageRetentionPeriod: 86400 # one day
+    MaximumMessageSize: 262144
+    RedrivePolicy:
+      deadLetterTargetArn: !GetAtt DownstreamWebsocketDeadLetter.Arn
+      maxReceiveCount: 2
+    VisibilityTimeout: 75 # 1 min 15 sec
+
+DownstreamWebsocketDeadLetter:
+  Type: AWS::SQS::Queue
+
+# downstream
+DownstreamWebsocket:
+  Type: AWS::Serverless::Function
+  Properties:
+    Timeout: 15
+    Description: down streams websocket
+    CodeUri: ws/downstream/
+    Policies:
+      # <__policies>
+    Environment:
+      Variables:
+        # <__variables>
+    Layers:
+      - !Ref DatabaseInterfacePy
+    Events:
+      SQSEvent:
+        Type: SQS
+        Properties:
+          Queue: !GetAtt DownstreamWebsocketQueue.Arn
+          BatchSize: 10
+          Enabled: True
+
+ConnectFunction:
+  Type: AWS::Serverless::Function
+  Properties:
+    CodeUri: ws/connect
+    Policies:
+      # <__policies>
+    Environment:
+      Variables:
+        # <__variables>
+    Layers:
+      - !Ref DatabaseInterfacePy
+      - !Ref UtilsPy
+
+DisconnectFunction:
+  Type: AWS::Serverless::Function
+  Properties:
+    CodeUri: ws/disconnect
+    Policies:
+      # <__policies>
+    Environment:
+      Variables:
+        # <__variables>
+    Layers:
+      - !Ref DatabaseInterfacePy
+
+DefaultFunction:
+  Type: AWS::Serverless::Function
+  Properties:
+    CodeUri: ws/default
+    Policies:
+      # <__policies>
+      - Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - execute-api:ManageConnections
+            Resource:
+              - !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*/*/*
+    Environment:
+      Variables:
+        # <__variables>
+    Layers:
+      - !Ref DatabaseInterfacePy
+      - !Ref UtilsPy
+      
+ConnectPermission:
+  Type: AWS::Lambda::Permission
+  Properties:
+    Action: lambda:InvokeFunction
+    FunctionName: !GetAtt ConnectFunction.Arn
+    Principal: apigateway.amazonaws.com
+    SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*
+
+DisconnectPermission:
+  Type: AWS::Lambda::Permission
+  Properties:
+    Action: lambda:InvokeFunction
+    FunctionName: !GetAtt DisconnectFunction.Arn
+    Principal: apigateway.amazonaws.com
+    SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*
+
+DefaultPermission:
+  Type: AWS::Lambda::Permission
+  Properties:
+    Action: lambda:InvokeFunction
+    FunctionName: !GetAtt DefaultFunction.Arn
+    Principal: apigateway.amazonaws.com
+    SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*
+
+WebSocketApi:
+  Type: AWS::ApiGatewayV2::Api
+  Properties:
+    Name: !Sub "${AWS::StackName}-WebSocketApi"
+    ProtocolType: WEBSOCKET
+    RouteSelectionExpression: $request.body.action
+
+ConnectRoute:
+  Type: AWS::ApiGatewayV2::Route
+  Properties:
+    ApiId: !Ref WebSocketApi
+    RouteKey: $connect
+    AuthorizationType: NONE
+    OperationName: ConnectRoute
+    Target: !Join
+      - "/"
+      - - "integrations"
+        - !Ref ConnectIntegration
+
+DisconnectRoute:
+  Type: AWS::ApiGatewayV2::Route
+  Properties:
+    ApiId: !Ref WebSocketApi
+    RouteKey: $disconnect
+    AuthorizationType: NONE
+    OperationName: DisconnectRoute
+    Target: !Join
+      - "/"
+      - - "integrations"
+        - !Ref DisconnectIntegration
+
+DefaultRoute:
+  Type: AWS::ApiGatewayV2::Route
+  Properties:
+    ApiId: !Ref WebSocketApi
+    RouteKey: $default
+    AuthorizationType: NONE
+    OperationName: DefaultRoute
+    Target: !Join
+      - "/"
+      - - "integrations"
+        - !Ref DefaultIntegration
+
+ConnectIntegration:
+  Type: AWS::ApiGatewayV2::Integration
+  Properties:
+    ApiId: !Ref WebSocketApi
+    Description: WebSocket Connect Integration
+    IntegrationType: AWS_PROXY
+    IntegrationUri:
+      Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ConnectFunction.Arn}/invocations
+
+DisconnectIntegration:
+  Type: AWS::ApiGatewayV2::Integration
+  Properties:
+    ApiId: !Ref WebSocketApi
+    Description: WebSocket Disconnect Integration
+    IntegrationType: AWS_PROXY
+    IntegrationUri:
+      Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DisconnectFunction.Arn}/invocations
+
+DefaultIntegration:
+  Type: AWS::ApiGatewayV2::Integration
+  Properties:
+    ApiId: !Ref WebSocketApi
+    Description: WebSocket Default Integration
+    IntegrationType: AWS_PROXY
+    IntegrationUri:
+      Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DefaultFunction.Arn}/invocations
+
+WebSocketStage:
+  Type: AWS::ApiGatewayV2::Stage
+  Properties:
+    ApiId: !Ref WebSocketApi
+    StageName: "api"
+    AutoDeploy: true
+

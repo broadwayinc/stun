@@ -1,0 +1,15 @@
+DatabaseInterfacePy:
+  Type: AWS::Serverless::LayerVersion
+  Properties:
+    LayerName: !Sub ${AWS::StackName}-${AWS::Region}-DatabaseInterfacePy
+    ContentUri: database_interface
+    CompatibleRuntimes:
+      - python3.11
+
+UtilsPy:
+  Type: AWS::Serverless::LayerVersion
+  Properties:
+    LayerName: !Sub ${AWS::StackName}-${AWS::Region}-UtilsPy
+    ContentUri: utils
+    CompatibleRuntimes:
+      - python3.11

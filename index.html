@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<title>UDP hole punching</title>
+<style>
+    .log {
+        height: 200px;
+        padding: 0 8px;
+        overflow: auto;
+        background: black;
+        color: lawngreen;
+    }
+</style>
+
+<h1>UDP Hole Punching</h1>
+
+<h2>Calling the STUN Server</h2>
+
+<pre>
+1.  Input the STUN server URL below.
+    By default, simple STUN server is provided at 'stun:stun.broadwayinc.computer:53' (Seoul, Korea).
+
+    STUN server URL: <input type="url" id="stun_url" style="width: 18em" placeholder="stun:server.url">
+
+    Click the "Call Stun" button to call the STUN server and get the IP address and sdp offer to send to the other users.
+    
+    <button onclick="callStun()">Call Stun</button>
+</pre>
+
+STUN Response will be displayed below.
+<div class="log">
+    <pre id="status"></pre>
+    <pre id="sdpoffer"></pre>
+</div>
+
+<h2>Websocket</h2>
+
+<pre>
+Establish websocket connection to send and receive messages from the server.
+The websocket connection can be used to inform IP address between peers for p2p connection.
+
+Below shows the endpoint to connect to the websocket server:
+<b id="wsendpoint">wss://yaqlgf8dek.execute-api.us-east-1.amazonaws.com/api?token={token}</b>
+
+
+1.  Input token string below. <b>(Required)</b>
+    For now, the token string will be used as a user_id from the backend.
+    Implementing authentication and hashed user information can be done in the future.
+
+    Websocket token: <input type="text" id="token" style="width: 18em" placeholder="Token string (only alphanumeric please)" oninput="
+        let tokenSpan = document.querySelectorAll('.token');
+        for (let i = 0; i < tokenSpan.length; i++) {
+            tokenSpan[i].textContent = this.value;
+        }
+        if(this.value) {
+            wsendpoint.textContent = 'Websocket URL: wss://yaqlgf8dek.execute-api.us-east-1.amazonaws.com/api?token=' + this.value;
+        } else {
+            wsendpoint.textContent = 'Websocket URL: wss://yaqlgf8dek.execute-api.us-east-1.amazonaws.com/api?token={token}';
+        }
+    ">
+
+
+2.  Set websocket room name(id). <b>(Required)</b>
+    This will be used to join the user to websocket group in the backend.
+    Multiple users can join the same room to communicate with each other.
+    Websocket connection will be used to send ip address to other users in the same room.
+
+    Room name: <input type="text" id="room" style="width: 18em" placeholder="Room name (only alphanumeric please)" oninput="
+        let roomSpan = document.querySelectorAll('.room');
+        for (let i = 0; i < roomSpan.length; i++) {
+            roomSpan[i].textContent = this.value;
+        }
+    ">
+
+
+3.  Click the "Connect" button to connect to the websocket server.
+    It will establish a websocket connection to endpoint mention above and join the user to the room.
+
+    <button onclick="connectWebsocket(websocketCallback)">Connect</button>
+
+    Once the websocket connection is established,
+    following websocket message(JSON string) will(should) be sent as below to join the user to the room:
+    <b>
+    {
+        "action": "joinGroup",
+        "rid": "<span class="room"></span>",
+        "token": "<span class="token"></span>"
+    }
+    </b>
+</pre>
+
+<h2>Websocket Response</h2>
+Websocket response will be displayed here.
+
+<div id="wsLog" class="log"></div>
+
+<h2>Broadcasting SDP offer</h2>
+
+<pre>
+1.  Now you have the IP address and SDP offer from the STUN server.
+    You can broadcast the SDP offer to all the users in the same room to establish a p2p connection.
+
+    Input any nessary message below and click the "Broadcast" button.
+
+    Message: <input type="text" placeholder="Any string message to broadcast" id="broadcastMsg" style="width: 18em" oninput="
+    let bcmsgSpan = document.querySelectorAll('.bcmsg');
+    for (let i = 0; i < bcmsgSpan.length; i++) {
+        bcmsgSpan[i].textContent = this.value;
+    }
+    ">
+
+    <button onclick="broadcast()">Broadcast</button>
+
+    following websocket message(JSON string) will(should) be sent as below to broadcast a message in the room:
+    <b>
+    {
+        action: 'broadcast',
+        rid: "<span class="room"></span>",
+        content: <span class="bcmsg"></span>,
+        token: "<span class="token"></span>"
+    }
+    </b>
+</pre>
+
+<h2>List users in the room</h2>
+
+<pre>
+1.  Websocket will inform the client whenever there is a new user joining the room.
+    But for users that were already in the room, you can do GET request to endpoint below to get list of users that currently present in the room.
+
+    <b>https://4b6zwxd0l4.execute-api.us-east-1.amazonaws.com/api/get-ws-group?room=<span class="room"></span></b>
+
+    <button onclick="getUsers()">GET</button>
+
+    The API will return the list of users in the room in following JSON format:
+    <b>
+    {
+        "endOfList": boolean
+        "list": [
+            {
+                "uid": "{service}#{user id}"
+            },
+            ...
+        ],
+        "startKey": string | { [key:string]: any }
+    }
+    </b>
+
+    When there is lots of users in the room, the API will return the list in paginated format.
+    To get the next page of the list, You can add the received "startKey" value in your GET query parameter name startKey.
+    You can also request limited number of users by adding limit query parameter.
+    Also there are parameters to search, listing created room as well. I will elaborate more detail in future if asked.
+</pre>
+
+GET response will be displayed below.
+<div id="usrLi" class="log"></div>
+
+<h2>Send SDP offer privately</h2>
+
+<pre>
+1.  Once you have the user id(token) of the user you want to send a private message.
+    You can use it to send the SDP offer privately to the user. 
+    Input the message and the user id(recipient's token string) below and click the "Send Message" button.
+
+    Message <input type="text" placeholder="Any string message to send privatly" id="privateMsg" style="width: 18em" oninput="
+    let pmsgSpan = document.querySelectorAll('.pmsg');
+    for (let i = 0; i < pmsgSpan.length; i++) {
+        pmsgSpan[i].textContent = this.value;
+    }
+    ">
+
+    User ID (token) <input type="text" placeholder="User ID to send message to" id="recipient" style="width: 18em" oninput="
+    let recipientSpan = document.querySelectorAll('.recipient');
+    for (let i = 0; i < recipientSpan.length; i++) {
+        recipientSpan[i].textContent = this.value;
+    }
+    ">
+
+    <button onclick="sendMsg(privateMsg.value, recipient.value)">Send Message</button>
+
+    following websocket message(JSON string) will(should) be sent as below to send a private message to a user:
+    <b>
+    {
+        action: 'sendMessage',
+        uid: "<span class="recipient"></span>",
+        content: "<span class="pmsg"></span>",
+        token: "<span class="token"></span>"
+    }
+    </b>
+</pre>
+
+
+<script>
+    // Call STUN server to get IP address
+    stun_url.value = 'stun:stun.broadwayinc.computer:53';
+    let peerConnection;
+
+    function callStun() {
+        const configuration = {
+            iceServers: [
+                { urls: stun_url.value }
+            ]
+        };
+
+        peerConnection = new RTCPeerConnection(configuration);
+
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate?.url) {
+                console.log(event.candidate);
+                document.getElementById('status').textContent += event.candidate.candidate + '\n----------------------------------------\n';
+            }
+        };
+
+        peerConnection.createDataChannel('dummyChannel');
+        peerConnection.createOffer().then((offer) => {
+            return peerConnection.setLocalDescription(offer);
+        }).then(() => {
+            let offer = peerConnection.localDescription;
+            sdpoffer.textContent = JSON.stringify(offer, null, 2) + '\n----------------------------------------\n';
+        }).catch((error) => {
+            console.error('Error creating offer:', error);
+            document.getElementById('status').textContent += 'Error creating offer: ' + error + '\n';
+        });
+    }
+
+    // Websocket connection
+    let ws = null;
+    let reconnectAttempts = 0;
+
+    function connectWebsocket(cb, delay = 0) {
+        let tokenString = token.value.trim();
+        let roomId = room.value.trim();
+
+        if (!tokenString) {
+            alert('Please input a token string.');
+            return;
+        }
+
+        if (!roomId) {
+            alert('Please input a room name(ID).');
+            return;
+        }
+
+        if (reconnectAttempts || !(ws instanceof Promise)) {
+            ws = new Promise(async resolve => {
+
+                setTimeout(() => {
+                    let socket = new WebSocket(
+                        'wss://yaqlgf8dek.execute-api.us-east-1.amazonaws.com/api' + '?token=' + tokenString
+                    );
+
+                    socket.onopen = () => {
+                        reconnectAttempts = 0;
+
+                        cb({ '#notice': 'Connected to WebSocket server.' });
+
+                        // join the room
+
+                        socket.send(JSON.stringify({
+                            action: 'joinGroup',
+                            rid: roomId,
+                            token: tokenString
+                        }));
+
+                        resolve(socket);
+                    };
+
+                    socket.onmessage = event => {
+                        let data = JSON.parse(decodeURI(event.data));
+
+                        /*
+                        message comes in the form of JSON string:
+                            {
+                                "#message": "message", (public message broadcasted in the room)
+                                "#private": "private message", (pricate message sent to the user)
+                                "#notice": "notice message", (notice message sent to the user)
+                                "#user_id": "user_id" (user_id of the sender)
+                            }
+                        */
+
+                        cb(data);
+                    };
+
+                    socket.onclose = event => {
+                        if (event.wasClean) {
+                            cb({ '#notice': 'WebSocket connection closed.' });
+
+                            ws = null;
+                        }
+                        else {
+                            // close event was unexpected
+                            const maxAttempts = 10;
+                            reconnectAttempts++;
+
+                            if (reconnectAttempts < maxAttempts) {
+                                let delay = Math.min(1000 * (2 ** reconnectAttempts), 30000); // max delay is 30 seconds
+                                cb({ '#notice': `Skapi: WebSocket connection error. Reconnecting in ${delay / 1000} seconds...` });
+                                connectWebsocket(cb, delay);
+
+                            } else {
+                                // Handle max reconnection attempts reached
+                                cb({ '#notice': 'Skapi: WebSocket connection error. Max reconnection attempts reached.' });
+                                ws = null;
+                            }
+                        }
+                    };
+
+                    socket.onerror = () => {
+                        cb({ '#notice': 'Skapi: WebSocket connection error.' });
+                        alert('WebSocket connection error.');
+                    };
+                }, delay);
+
+            });
+        }
+
+        else {
+            alert('Already connected to WebSocket server.');
+        }
+    }
+
+    async function closeWs() {
+        let socket = await ws;
+
+        if (socket) {
+            socket.close();
+        }
+
+        ws = null;
+    }
+
+    function websocketCallback(data) {
+        let pre = document.createElement('pre');
+        pre.textContent = JSON.stringify(data, null, 2) + '\n----------------------------------------\n';
+        wsLog.prepend(pre);
+    }
+
+
+    // send websocket message
+    async function broadcast() {
+        let socket = await ws;
+
+        if (!socket) {
+            alert('No websocket connected.');
+            return;
+        }
+
+        let tokenString = token.value.trim();
+        if (socket.readyState === 1) {
+            return socket.send(JSON.stringify({
+                action: 'broadcast',
+                rid: room.value.trim(),
+                content: broadcastMsg.value.trim(),
+                token: tokenString
+            }));
+        }
+
+        alert('No websocket is connected. Try reconnecting.');
+    }
+    async function sendMsg() {
+        let socket = await ws;
+
+        if (!socket) {
+            alert('No websocket connected.');
+            return;
+        }
+
+        let tokenString = token.value.trim();
+
+        if (socket.readyState === 1) {
+            return socket.send(JSON.stringify({
+                action: 'sendMessage',
+                uid: recipient.value,
+                content: privateMsg.value,
+                token: tokenString
+            }));
+        }
+
+        alert('No websocket is connected. Try reconnecting.');
+    }
+
+    async function getUsers() {
+        let roomVal = room.value.trim();
+        if (!roomVal) {
+            alert('Please input a room name(ID).');
+            return;
+        }
+        let api = 'https://4b6zwxd0l4.execute-api.us-east-1.amazonaws.com/api/get-ws-group?room=' + roomVal;
+        let resp = await fetch(api);
+        let data = await resp.json();
+        console.log(data);
+        let pre = document.createElement('pre');
+        pre.textContent = JSON.stringify(data, null, 2) + '\n----------------------------------------\n';
+        usrLi.prepend(pre);
+    }
+</script>

@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless API Framework
+
+Parameters:
+  ServiceName:
+    Type: String
+    Description: Service name (please, no spaces, only alphanumeric characters).
+    Default: "stunpunch"
+
+Resources:
+  # <_gateway>
+  # <_websocket>
+  # <_lambda>
+  # <_layers_py>
+  
+Outputs:
+  Endpoints:
+    Description: Python script will create endpoints.json file.
+    Value: !Sub |
+      -START-
+      {
+        "service_name": "${ServiceName}",
+        "REGION": "${AWS::Region}",
+        "websocket_private": "wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/api",
+        "api_public": "https://${PublicApi}.execute-api.${AWS::Region}.amazonaws.com/api/"
+      }
+      -END-
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Handler: index.handler
+    Timeout: 5
+    MemorySize: 768 # 2048

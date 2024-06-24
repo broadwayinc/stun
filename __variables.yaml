@@ -1,0 +1,20 @@
+SERVICE: !Ref ServiceName
+# api return messages
+MSG_SUCCESS: SUCCESS # returned successfully without error
+
+# websocket table
+WEBSOCKET_TABLE: !Ref WebsocketConnection231120
+WEBSOCKET_ENDPOINT: !Sub "https://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/api"
+WEBSOCKET_GROUP_TABLE: !Ref WebsocketGroup231121
+WSFanSNS: !Ref WSFanSNS
+DOWNSTREAM_WEBSOCKET_SQS_URL: !Ref DownstreamWebsocketQueue
+
+# api return errors
+SOMETHING_WENT_WRONG: Something went wrong.
+ERR_INVALID_CORS: INVALID_CORS # restricted cors error, check your service settings.
+ERR_INVALID_REQUEST: INVALID_REQUEST # the request is restricted with some reason, or user does not have authority.
+ERR_SERVICE_DISABLED: SERVICE_DISABLED # service is disabled.
+ERR_INVALID_PARAMETER: INVALID_PARAMETER # there is something wrong with the parameters.
+ERR_EXISTS: EXISTS # resource exists.
+ERR_NOT_EXISTS: NOT_EXISTS # resource does not exists.
+ERR_EXCEED_LIMIT: EXCEED_LIMIT # resource exceeds the limit.

@@ -1,0 +1,25 @@
+# lambda
+GetGroup:
+  Type: AWS::Serverless::Function
+  Properties:
+    MemorySize: 1024
+    Timeout: 15
+    Description: get group
+    CodeUri: ws/get_group
+    Policies:
+      # <__policies>
+      
+    Environment:
+      Variables:
+        # <__variables>
+    Events:
+      GetGroupApi:
+        Type: Api
+        Properties:
+          RestApiId: !Ref PublicApi
+          Method: GET
+          Path: /get-ws-group
+
+    Layers:
+      - !Ref DatabaseInterfacePy
+      - !Ref UtilsPy
