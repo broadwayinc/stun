@@ -20,7 +20,7 @@ If you want to deploy it yourself, follow the instructions below.
   - SAM CLI
   - Python3
 
-## Deploying the application
+## Deploying AWS Resources
 
 Run the following commands to deploy the application:
 ```
