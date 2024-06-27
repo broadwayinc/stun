@@ -21,12 +21,12 @@ def broadcast(message, event):
 
     except CustomError as e:
         return {"statusCode": 401, "body": str(e)}
-    
-    sid = token['service']
+
+    sid = token["service"]
 
     msg = {
         "#message": message["content"],
-        "#user_id": token['user_id'],
+        "#user_id": token["user_id"],
     }
 
     sns.publish(
@@ -49,15 +49,15 @@ def broadcast(message, event):
 def sendMessage(message, event):
     user_id = message["uid"]
     recipient_connection_id = None
-    
+
     try:
         token = authenticate_token(message["token"])
 
     except CustomError as e:
         return {"statusCode": 401, "body": str(e)}
 
-    sender = token['user_id']
-    sid = token['service']
+    sender = token["user_id"]
+    sid = token["service"]
 
     try:
         # retrieve the recipient's connection ID from the database
@@ -86,10 +86,7 @@ def sendMessage(message, event):
     print(recipient_connection_id, "Sending message...")
     # Sending the message to the recipient's connection
 
-    msg = {
-        "#private": message["content"],
-        "#user_id": sender
-    }
+    msg = {"#private": message["content"], "#user_id": sender}
 
     msg = json.dumps(msg)
 
@@ -132,15 +129,21 @@ def sendMessage(message, event):
 def joinRoom(message, event):
     connection_id = event["requestContext"]["connectionId"]
     room_id = message["rid"]
+    ip = message.get("ip", "n/a")
 
     try:
         token = authenticate_token(message["token"])
 
     except CustomError as e:
         return {"statusCode": 401, "body": str(e)}
-    
-    uid = token['user_id']
-    sid = token['service']
+
+    uid = token["user_id"]
+    sid = token["service"]
+
+    item = {
+        "rid": sid + "#" + room_id,
+        "ip": ip,
+    }
 
     try:
         if room_id:
@@ -151,9 +154,7 @@ def joinRoom(message, event):
                         "cid": connection_id,
                         "uid": sid + "#" + uid,
                     },
-                    "item": {
-                        "rid": sid + "#" + room_id,
-                    },
+                    "item": item,
                     "exists": "uid",
                 }
             )
