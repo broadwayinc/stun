@@ -129,7 +129,7 @@ def sendMessage(message, event):
     }
 
 
-def joinGroup(message, event):
+def joinRoom(message, event):
     connection_id = event["requestContext"]["connectionId"]
     room_id = message["rid"]
 
@@ -215,8 +215,8 @@ def handler(event, context):
     if message["action"] == "sendMessage":
         return sendMessage(message, event)
 
-    if message["action"] == "joinGroup":
-        return joinGroup(message, event)
+    if message["action"] == "joinRoom":
+        return joinRoom(message, event)
 
     if message["action"] == "broadcast":
         return broadcast(message, event)

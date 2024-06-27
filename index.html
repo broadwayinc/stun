@@ -80,7 +80,7 @@ Below shows the endpoint to connect to the websocket server:
     following websocket message(JSON string) will(should) be sent as below to join the user to the room:
     <b>
     {
-        "action": "joinGroup",
+        "action": "joinRoom",
         "rid": "<span class="room"></span>",
         "token": "<span class="token"></span>"
     }
@@ -192,7 +192,7 @@ GET response will be displayed below.
     // Call STUN server to get IP address
     stun_url.value = 'stun:stun.broadwayinc.computer:53';
     let peerConnection;
-
+    let offer;
     function callStun() {
         const configuration = {
             iceServers: [
@@ -213,7 +213,7 @@ GET response will be displayed below.
         peerConnection.createOffer().then((offer) => {
             return peerConnection.setLocalDescription(offer);
         }).then(() => {
-            let offer = peerConnection.localDescription;
+            offer = peerConnection.localDescription;
             sdpoffer.textContent = JSON.stringify(offer, null, 2) + '\n----------------------------------------\n';
         }).catch((error) => {
             console.error('Error creating offer:', error);
@@ -255,7 +255,7 @@ GET response will be displayed below.
                         // join the room
 
                         socket.send(JSON.stringify({
-                            action: 'joinGroup',
+                            action: 'joinRoom',
                             rid: roomId,
                             token: tokenString
                         }));
