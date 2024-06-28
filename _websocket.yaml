@@ -95,10 +95,10 @@ WebsocketConnection231120:
         Projection:
           NonKeyAttributes:
             - rid
-            - cnd
+            # - cnd
           ProjectionType: INCLUDE
 
-      - IndexName: rid-cid
+      - IndexName: rid-cid-u
         KeySchema:
           - AttributeName: rid
             KeyType: HASH
