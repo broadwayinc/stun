@@ -129,7 +129,7 @@ def sendMessage(message, event):
 def joinRoom(message, event):
     connection_id = event["requestContext"]["connectionId"]
     room_id = message["rid"]
-    ip = message.get("ip", "n/a")
+    cand = message.get("candidate", "n/a")
 
     try:
         token = authenticate_token(message["token"])
@@ -142,7 +142,7 @@ def joinRoom(message, event):
 
     item = {
         "rid": sid + "#" + room_id,
-        "ip": ip,
+        "candidate": cand,
     }
 
     try:
@@ -186,7 +186,7 @@ def joinRoom(message, event):
                         "cid": connection_id,
                         "uid": sid + "#" + uid,
                     },
-                    "remove": ["rid"],
+                    "remove": ["rid", "candidate"],
                     "exists": "uid",
                 }
             )
