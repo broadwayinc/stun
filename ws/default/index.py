@@ -142,7 +142,7 @@ def joinRoom(message, event):
 
     item = {
         "rid": sid + "#" + room_id,
-        "candidate": cand,
+        "cnd": cand,
     }
 
     try:
@@ -186,7 +186,7 @@ def joinRoom(message, event):
                         "cid": connection_id,
                         "uid": sid + "#" + uid,
                     },
-                    "remove": ["rid", "candidate"],
+                    "remove": ["rid", "cnd"],
                     "exists": "uid",
                 }
             )

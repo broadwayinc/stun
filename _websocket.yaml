@@ -74,6 +74,9 @@ WebsocketConnection231120:
       - AttributeName: rid # room id
         AttributeType: S
 
+      - AttributeName: cnd # candidate (public ip info)
+        AttributeType: S
+        
     KeySchema:
       - AttributeName: cid
         KeyType: HASH
@@ -92,6 +95,7 @@ WebsocketConnection231120:
         Projection:
           NonKeyAttributes:
             - rid
+            - cnd
           ProjectionType: INCLUDE
 
       - IndexName: rid-cid
@@ -101,7 +105,9 @@ WebsocketConnection231120:
           - AttributeName: cid
             KeyType: RANGE
         Projection:
-          ProjectionType: KEYS_ONLY
+          NonKeyAttributes:
+            - cnd
+          ProjectionType: INCLUDE
 
 WSFanSNS:
   Type: AWS::SNS::Topic

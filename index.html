@@ -258,7 +258,7 @@ GET response will be displayed below.
                             action: 'joinRoom',
                             rid: roomId,
                             token: tokenString,
-                            candidate: JSON.parse(offer?.sdp)
+                            candidate: JSON.stringify(offer?.sdp)
                         }));
 
                         resolve(socket);

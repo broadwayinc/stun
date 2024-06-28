@@ -64,8 +64,8 @@ def main(e):
                     },
                     "condition": ">",
                     "limit": 1,
-                    "projection": ["uid", "rid"],
-                    "primary": ["rid", "uid"],
+                    "projection": ["uid", "rid", "cnd"],
+                    "primary": ["uid", "cid"],
                 }
             )
 
@@ -95,7 +95,7 @@ def main(e):
                 "primary": ["rid", "cid"],
                 "limit": limit,
                 "startKey": startKey,
-                "projection": ["uid"],
+                "projection": ["uid", "cnd"],
                 "ascending": ascending,
             }
         )
