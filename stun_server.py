@@ -23,6 +23,27 @@ STUN_ATTR_XOR_MAPPED_ADDRESS = 0x0020
 STUN_MAGIC_COOKIE = 0x2112A442
 
 def parse_stun_message(data):
+    # """
+    # Parses a STUN message and returns the method, message length, magic cookie, transaction ID, and attributes.
+    # """
+    # if len(data) < 20:
+    #     return None, None, None, None, None
+
+    # # Unpack the first 8 bytes to get the message type and message length
+    # message_type, message_length, magic_cookie = struct.unpack('!HHI', data[:8])
+    # transaction_id = data[8:20]
+
+    # if magic_cookie != STUN_MAGIC_COOKIE:
+    #     return None, None, None, None, None
+
+    # # Extract the method from the message type
+    # # Bits 0-3 and 5-8 in the message type field represent the method
+    # method = (message_type & 0x000F) | ((message_type & 0x00E0) >> 1) | ((message_type & 0x3E00) >> 2)
+
+    # attributes = data[20:20 + message_length]
+
+    # return method, message_length, magic_cookie, transaction_id, attributes
+
     """
     Parses a STUN message and returns the method, message length, magic cookie, transaction ID, and attributes.
     """

@@ -55,7 +55,7 @@ StreamWebsocketGroup:
     Layers:
       - !Ref DatabaseInterfacePy
 
-WebsocketConnection231120:
+WebsocketUsers240628:
   Type: AWS::DynamoDB::Table
   DeletionPolicy: Retain
   UpdateReplacePolicy: Retain
@@ -95,10 +95,10 @@ WebsocketConnection231120:
         Projection:
           NonKeyAttributes:
             - rid
-            # - cnd
+            - cnd
           ProjectionType: INCLUDE
 
-      - IndexName: rid-cid-u
+      - IndexName: rid-cid
         KeySchema:
           - AttributeName: rid
             KeyType: HASH
@@ -160,7 +160,7 @@ StreamWebsocketConnection:
       Stream:
         Type: DynamoDB
         Properties:
-          Stream: !GetAtt WebsocketConnection231120.StreamArn
+          Stream: !GetAtt WebsocketUsers240628.StreamArn
           BatchSize: 100
           StartingPosition: TRIM_HORIZON
     Layers:
