@@ -55,7 +55,7 @@ StreamWebsocketGroup:
     Layers:
       - !Ref DatabaseInterfacePy
 
-WebsocketUsers240628:
+WebsocketConnection231120:
   Type: AWS::DynamoDB::Table
   DeletionPolicy: Retain
   UpdateReplacePolicy: Retain
@@ -74,8 +74,8 @@ WebsocketUsers240628:
       - AttributeName: rid # room id
         AttributeType: S
 
-      - AttributeName: cnd # candidate (public ip info)
-        AttributeType: S
+      # - AttributeName: cnd # candidate (public ip info)
+      #   AttributeType: S
         
     KeySchema:
       - AttributeName: cid
@@ -160,7 +160,7 @@ StreamWebsocketConnection:
       Stream:
         Type: DynamoDB
         Properties:
-          Stream: !GetAtt WebsocketUsers240628.StreamArn
+          Stream: !GetAtt WebsocketConnection231120.StreamArn
           BatchSize: 100
           StartingPosition: TRIM_HORIZON
     Layers:
