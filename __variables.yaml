@@ -3,7 +3,7 @@ SERVICE: !Ref ServiceName
 MSG_SUCCESS: SUCCESS # returned successfully without error
 
 # websocket table
-WEBSOCKET_TABLE: !Ref WebsocketConnection231120
+WEBSOCKET_TABLE: !Ref WebsocketUsers240628
 WEBSOCKET_ENDPOINT: !Sub "https://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/api"
 WEBSOCKET_GROUP_TABLE: !Ref WebsocketGroup231121
 WSFanSNS: !Ref WSFanSNS
