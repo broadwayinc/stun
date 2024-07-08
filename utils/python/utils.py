@@ -3,7 +3,7 @@ import time
 import json
 
 
-def send(code, data="", cors="*", cache=False, headers={}):
+def send(code, data="", cors="*", cache=False, headers={}, filename=""):
     """
 
     Sends out response.
@@ -13,6 +13,10 @@ def send(code, data="", cors="*", cache=False, headers={}):
 
     data : any
         Data to response.
+
+    filename : str
+        Respond as a file download if filename is given.
+        Data should be a base64 or bytes-like object.
 
     cors : str
         Cors url.
@@ -56,7 +60,7 @@ def send(code, data="", cors="*", cache=False, headers={}):
         print(response, "ERROR-RESPONSE")
         return response
 
-    # set access control
+    # response
 
     access_control(code)
 
@@ -80,14 +84,57 @@ def send(code, data="", cors="*", cache=False, headers={}):
                 "Cache-Control"
             ] = f"Cache-Control: public, max-age={cache}, immutable"
 
+    # respond as file download
+    if filename and isinstance(filename, str):
+        response["headers"][
+            "Content-Disposition"
+        ] = f'attachment; filename="{filename}"'
+        response["headers"]["isBase64Encoded"] = True
+
+        try:
+            data = base64.b64encode(data).decode("utf-8")
+            response["headers"]["Content-Type"] = "application/octet-stream"
+        except Exception:
+            access_control(500)
+            response["headers"]["Content-Type"] = 'text/plain; charset="utf-8"'
+            data = "ERROR: Unable to encode data to base64."
+
+        response["body"] = data
+        print(response, "RESPONSE")
+        return response
+
     # respond as string
     if isinstance(data, str):
-        response["headers"]["Content-Type"] = 'text/plains; charset="utf-8"'
+        if "Content-Type" not in response["headers"]:
+            response["headers"]["Content-Type"] = 'text/plain; charset="utf-8"'
         response["body"] = data
         print(response, "RESPONSE")
         return response
 
     # respond as json
+    if isinstance(data, dict):
+        is_database_response = True
+
+        # check if it is database response
+        for k in ["Items", "LastEvaluatedKey"]:
+            if not k in data:
+                is_database_response = False
+                break
+
+        # respond database fetch
+        if is_database_response:
+            endOfList = False if data["LastEvaluatedKey"] else True
+
+            data = {
+                "list": data["Items"],
+                "startKey": "end" if endOfList else data["LastEvaluatedKey"],
+                "endOfList": endOfList,
+            }
+
+            reference_private_key = data.get("reference_private_key", "")
+            if reference_private_key:
+                data["reference_private_key"] = reference_private_key
+
     try:
         ContentType = 'application/json; charset="utf-8"'
         data = json.dumps(data)

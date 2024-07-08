@@ -1,5 +1,10 @@
 import os
 from database_interface import query, delete
+import boto3
+import json
+
+sns = boto3.client("sns")
+topic_arn = os.environ["WSFanSNS"]
 
 
 def handler(event, context):
@@ -19,11 +24,29 @@ def handler(event, context):
             "search": {"uid": " "},
             "condition": ">",
             "limit": 1000,
-            "projection": ["cid", "uid"],
+            "projection": ["cid", "uid", "rid", "cnd"],
         }
     )["Items"]
 
     if to_disconnect:
-        delete({"table": websocket_tbl, "key": to_disconnect})
+        del_params = []
+        for td in to_disconnect:
+            del_params.append({"cid": td["cid"], "uid": td["uid"]})
+            if "rid" in td:
+                sns.publish(
+                    TopicArn=topic_arn,
+                    Message=json.dumps(
+                        {
+                            "rid": td["rid"],
+                            "content": {
+                                "#notice": f'User "{td["uid"].split("#")[1]}" has left the message group;{td.get("cnd", "n/a")}',
+                                "#user_id": td["uid"].split("#")[1],
+                            },
+                            "sender": td["cid"],
+                        }
+                    ),
+                )
+
+        delete({"table": websocket_tbl, "key": del_params})
 
     return {"statusCode": 200, "body": "Disconnected."}

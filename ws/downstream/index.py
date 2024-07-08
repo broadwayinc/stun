@@ -7,6 +7,20 @@ sqs = boto3.client("sqs")
 sns = boto3.client("sns")
 topic_arn = os.environ["WSFanSNS"]
 
+def user_leaves(td):
+    sns.publish(
+        TopicArn=topic_arn,
+        Message=json.dumps(
+            {
+                "rid": td["rid"],
+                "content": {
+                    "#notice": f'User "{td["uid"].split("#")[1]}" has left the message group;{td.get("cnd", "n/a")}',
+                    "#user_id": td["uid"].split("#")[1],
+                },
+                "sender": td["cid"],
+            }
+        ),
+    )
 
 def update_group(params):
     p = {
@@ -28,7 +42,7 @@ def update_group(params):
                 {
                     "rid": params["rid"],
                     "content": {
-                        "#notice": f'User "{params["uid"].split("#")[1]}" has left the message group.',
+                        "#notice": f'User "{params["uid"].split("#")[1]}" has left the message group;{params.get("cnd", "n/a")}',
                         "#user_id": params["uid"].split("#")[1],
                     },
                     "sender": params["cid"],
@@ -46,7 +60,7 @@ def remove_group(params):
     delete(p)
 
 
-actions = {"update_group": update_group, "remove_group": remove_group}
+actions = {"update_group": update_group, "remove_group": remove_group, "user_leaves": user_leaves}
 
 
 def handler(e, context):

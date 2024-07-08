@@ -49,6 +49,7 @@ def main(event):
                             "cnt": -1,
                             "uid": old_data["uid"],
                             "cid": old_data["cid"],
+                            "cnd": old_data.get("cnd", "n/a"),
                         },
                     }
                 )
@@ -62,6 +63,7 @@ def main(event):
                             "cnt": 1,
                             "uid": new_data["uid"],
                             "cid": new_data["cid"],
+                            "cnd": new_data.get("cnd", "n/a"),
                         },
                     }
                 )

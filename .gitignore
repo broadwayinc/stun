@@ -6,3 +6,4 @@ endpoints.json
 node_modules/
 resource_list.json
 start.sh
+__pycache__/

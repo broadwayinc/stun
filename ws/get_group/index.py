@@ -107,6 +107,7 @@ type_check = {
     "limit": int,
     "startKey": dict,
     "ascending": bool,
+    "searchFor": str
 }
 
 

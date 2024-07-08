@@ -171,7 +171,7 @@ def joinRoom(message, event):
                         "rid": sid + "#" + room_id,
                         "sender": connection_id,
                         "content": {
-                            "#notice": f'User "{uid}" has joined the message group.',
+                            "#notice": f'User "{uid}" has joined the message group;{cand}',
                             "#user_id": uid,
                         },
                     }
