@@ -4,7 +4,6 @@ import base64
 import hashlib
 import json
 
-
 async def send_message(writer, message):
     # Encode the message to bytes
     message_bytes = message.encode("utf-8")

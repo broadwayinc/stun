@@ -1,3 +1,6 @@
+// Description: This is an attempt to call a Python function from C using the Python C API.
+
+
 // gcc -o itpr_get_users itpr_get_users.c $(python3-config --cflags --ldflags)
 #include <Python.h>
 

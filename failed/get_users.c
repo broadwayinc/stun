@@ -1,3 +1,5 @@
+// This is an attempt to call get request to get users with C.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

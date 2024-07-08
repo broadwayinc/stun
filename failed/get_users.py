@@ -1,3 +1,5 @@
+# Description: This file contains the function to get the users in a room.
+
 from urllib import parse, request
 import json
 
