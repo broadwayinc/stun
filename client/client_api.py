@@ -4,7 +4,8 @@ from stun_client import stun_client
 from get_users import get_users
 from websocket import websocket_handshake
 
-stun_server = "stun.broadwayinc.computer:53"  # 'stun.server:port
+stun_server = 'stun.l.google.com:19302' 
+# stun_server = "stun.broadwayinc.computer:53"  # 'stun.server:port
 client_port = 12345
 token = "user_id"
 roomId = "hello"
