@@ -7,6 +7,24 @@ This is a simple implementation of UDP hole punching using AWS Lambda and API Ga
 Just open the **index.html** from your browser and see it in action.
 All backend services are hosted on AWS.
 
+# Test client API
+
+You can test the API called from python script in /client folder.
+
+```
+$ python3 ./client/client_api.py
+```
+
+In this script, you can configure the token, roomId, client_port, and the stun server endpoint.
+
+The API works as follows:
+- Request to STUN server to get the public IP and port of the client.
+- Make websocket connection to the server, Join the room of the roomId.
+- Call http API to get list of users in the room.
+- The websocket connection will be open and receive message whenever new user joins the room.
+
+# How to deploy
+
 If you want to deploy it yourself, follow the instructions below.
 
 ## Pre-Requisites
@@ -45,12 +63,7 @@ While running the script, you will see the following output:
     #Preserves the state of previously provisioned resources when an operation fails
     Disable rollback [y/N]: N
     GetGroup has no authentication. Is this okay? [y/N]: y
-
-You can proceed with the default values except:
-    
-    GetGroup has no authentication. Is this okay? [y/N]: y
-
-This is because the API Gateway does not have any authentication. You can choose to add authentication if you want.
+    ...
 
 
 ## Hosting the website remotely
