@@ -60,22 +60,51 @@ def parse_stun_message(data):
 
     return method, message_length, magic_cookie, transaction_id, attributes
 
-def create_stun_binding_response(transaction_id, client_ip, client_port):
+# def create_stun_binding_response(transaction_id, client_ip, client_port):
+#     """
+#     Creates a STUN Binding Response with the XOR-MAPPED-ADDRESS attribute.
+#     """
+#     response = struct.pack('!HHI', STUN_BINDING_RESPONSE, 0, STUN_MAGIC_COOKIE) + transaction_id
+
+#     xor_port = client_port ^ (STUN_MAGIC_COOKIE >> 16)
+#     xor_address = struct.unpack('!I', socket.inet_aton(client_ip))[0] ^ STUN_MAGIC_COOKIE
+
+#     attribute = struct.pack('!HHBBH', STUN_ATTR_XOR_MAPPED_ADDRESS, 8, 0, 1, xor_port)
+#     attribute += struct.pack('!I', xor_address)
+
+#     response += attribute
+
+#     message_length = len(response) - 20
+#     response = response[:2] + struct.pack('!H', message_length) + response[4:]
+
+#     return response
+
+def create_stun_binding_response(transaction_id, ip, port):
     """
-    Creates a STUN Binding Response with the XOR-MAPPED-ADDRESS attribute.
+    Creates a STUN Binding Response message.
     """
-    response = struct.pack('!HHI', STUN_BINDING_RESPONSE, 0, STUN_MAGIC_COOKIE) + transaction_id
+    # STUN message header
+    message_type = STUN_BINDING_RESPONSE
+    message_length = 12  # Length of the XOR-MAPPED-ADDRESS attribute
+    magic_cookie = STUN_MAGIC_COOKIE
 
-    xor_port = client_port ^ (STUN_MAGIC_COOKIE >> 16)
-    xor_address = struct.unpack('!I', socket.inet_aton(client_ip))[0] ^ STUN_MAGIC_COOKIE
+    # XOR-MAPPED-ADDRESS attribute
+    xor_mapped_address_type = 0x0020
+    xor_mapped_address_length = 8
+    xor_port = port ^ (magic_cookie >> 16)
+    xor_ip = struct.unpack('!I', socket.inet_aton(ip))[0] ^ magic_cookie
 
-    attribute = struct.pack('!HHBBH', STUN_ATTR_XOR_MAPPED_ADDRESS, 8, 0, 1, xor_port)
-    attribute += struct.pack('!I', xor_address)
-
-    response += attribute
-
-    message_length = len(response) - 20
-    response = response[:2] + struct.pack('!H', message_length) + response[4:]
+    response = struct.pack('!HHI12sHHBBH4s',
+                           message_type,
+                           message_length,
+                           magic_cookie,
+                           transaction_id,
+                           xor_mapped_address_type,
+                           xor_mapped_address_length,
+                           0x00,  # Reserved, should be 0
+                           0x01,  # Address family (IPv4)
+                           xor_port,
+                           struct.pack('!I', xor_ip))
 
     return response
 

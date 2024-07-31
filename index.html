@@ -16,7 +16,7 @@
 
 <pre>
 1.  Input the STUN server URL below.
-    By default, simple STUN server is provided at 'stun:stun.broadwayinc.computer:53' (Seoul, Korea).
+    By default, simple STUN server is provided at 'stun:stun.broadwayinc.computer:3468' (Seoul, Korea).
 
     STUN server URL: <input type="url" id="stun_url" style="width: 18em" placeholder="stun:server.url">
 
@@ -191,7 +191,7 @@ GET response will be displayed below.
 
 <script>
     // Call STUN server to get IP address
-    stun_url.value = 'stun:stun.broadwayinc.computer:53';
+    stun_url.value = 'stun:stun.broadwayinc.computer:3468';
     let peerConnection;
     let offer;
     function callStun() {
