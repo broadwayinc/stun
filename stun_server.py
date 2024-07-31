@@ -1,7 +1,7 @@
 """
 Simple stun server, udp and tcp combined server on port 3560
 
-Host on AWS EC2 instance with udp request load balancer infront.
+Host on AWS EC2 instance forwarded from udp request load balancer(udp port:3468) infront.
 tcp is only for health check running parallel with udp server.
 
 free to ask any questions, happy to help.
