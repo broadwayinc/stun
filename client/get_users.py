@@ -22,4 +22,10 @@ def get_users(room: str) -> list[str]:
     content = response.read()
     data = json.loads(content.decode("utf-8"))
 
+    uli = []
+    for i in data["list"]:
+        ip, port = i["cnd"].split(":")
+        uid = i["uid"].split("#")[-1]
+        uli.append([ip, port, uid])
+        
     return data["list"]

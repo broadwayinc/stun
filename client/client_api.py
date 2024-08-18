@@ -7,7 +7,7 @@ from websocket import websocket_handshake
 stun_server = "stun.broadwayinc.computer:3468"  # 'stun.server:port
 client_port = 12345
 token = "user_id"
-roomId = "hello"
+roomId = "Id001"
 
 ip = stun_client(stun_server, client_port)
 print("ip:", ip)  # ip:port
