@@ -3,24 +3,13 @@
 #include "./include/json.hpp"
 #include <signal.h>
 #include <iostream>
-#include <stdexcept>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <netdb.h>
+// sudo apt-get install libcurl4-openssl-dev
+// https://curl.se/libcurl/
 #include <curl/curl.h>
-
-#if defined(__linux__ )
-   #include <arpa/inet.h>
-   #include <sys/socket.h>
-   #include <unistd.h>
-   #include <netdb.h>
-#else
-  #include <io.h> 
-  #include <winsock2.h> 
-  #include <Windows.h>  
-  #include <Ws2tcpip.h>
-  #pragma comment (lib, "Ws2_32.lib")
-  #pragma comment (lib, "Mswsock.lib")
-  #pragma warning(disable : 4996)
-  typedef unsigned __int64    ssize_t;
-#endif
 
 // sudo apt-get install libwebsockets-dev
 #include <libwebsockets.h>
@@ -49,14 +38,7 @@ std::string resolve_hostname(const std::string& hostname) {
     return std::string(ip_str);
 }
 
-
-#if defined(__linux__)
- std::string stun_client(const std::string& stun_endpoint, int client_port, int &sock) 
-#else
- std::string stun_client(const std::string& stun_endpoint, int client_port, SOCKET &sock)  
-#endif
-{
-
+std::string stun_client(const std::string& stun_endpoint, int client_port) {
     std::cout << "STUN client started with endpoint: " << stun_endpoint << " and client port: " << client_port << std::endl;
 
     std::vector<std::string> endpoint_split;
@@ -75,7 +57,7 @@ std::string resolve_hostname(const std::string& hostname) {
     int server_port;
     try {
         server_port = std::stoi(endpoint_split[1]);
-    } catch (const std::invalid_argument) {
+    } catch (const std::invalid_argument& e) {
         std::cerr << "Invalid server port: " << endpoint_split[1] << std::endl;
         throw;
     }
@@ -89,14 +71,10 @@ std::string resolve_hostname(const std::string& hostname) {
 
     std::cout << "Resolved server IP: " << server_ip << " and server port: " << server_port << std::endl;
 
-    unsigned char stun_header[20] = {0x00, 0x01, 0x00, 0x00, 0x21, 0x12, 0xA4, 0x42, 0x6F, 0xA2, 0x2B, 0x0D};
-                  //0x63, 0xc7, 0x11, 0x7e, 0x07, 0x14, 0x27, 0x8f, 
-                  //0x5d, 0xed, 0x32, 0x21);
-                  
-    std::memset(stun_header + 12, 0, 8);
+    unsigned char stun_header[20] = {0x00, 0x01, 0x00, 0x00, 0x21, 0x12, 0xA4, 0x42};
+    std::memset(stun_header + 8, 0, 12);
 
-    
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
         perror("socket");
         return "";
@@ -110,7 +88,6 @@ std::string resolve_hostname(const std::string& hostname) {
     if (bind(sock, (struct sockaddr*)&client_addr, sizeof(client_addr)) < 0) {
         perror("bind");
         close(sock);
-        sock = 0;
         return "";
     }
 
@@ -125,7 +102,6 @@ std::string resolve_hostname(const std::string& hostname) {
             perror("inet_pton");
         }
         close(sock);
-        sock = 0;
         return "";
     }
 
@@ -133,22 +109,20 @@ std::string resolve_hostname(const std::string& hostname) {
 
     try {
         std::cout << "Sending STUN request to " << server_ip << ":" << server_port << std::endl;
-        ssize_t sent_bytes = sendto(sock, (char *)stun_header, sizeof(stun_header), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
+        ssize_t sent_bytes = sendto(sock, stun_header, sizeof(stun_header), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
         if (sent_bytes < 0) {
             perror("sendto");
             close(sock);
-            sock = 0;
             return "";
         }
         std::cout << "Sent " << sent_bytes << " bytes" << std::endl;
 
         unsigned char data[1024];
         socklen_t addr_len = sizeof(server_addr);
-        ssize_t len = recvfrom(sock, (char *)data, sizeof(data), 0, (struct sockaddr*)&server_addr, &addr_len);
+        ssize_t len = recvfrom(sock, data, sizeof(data), 0, (struct sockaddr*)&server_addr, &addr_len);
         if (len < 0) {
             perror("recvfrom");
             close(sock);
-            sock = 0;
             return "";
         }
 
@@ -188,14 +162,6 @@ std::string resolve_hostname(const std::string& hostname) {
                         std::memcpy(&ip4, data + pointer + 11, 1);
 
                         port = ntohs(port);
-                        
-                        port = ntohs(port);
-                        port ^= 0x2112;
-                        ip1 ^= 0x21;
-                        ip2 ^= 0x12;
-                        ip3 ^= 0xA4;
-                        ip4 ^= 0x42;
-                        
                         user_ip = std::to_string(ip1) + "." + std::to_string(ip2) + "." + std::to_string(ip3) + "." + std::to_string(ip4) + ":" + std::to_string(port);
                         break;
                     } else {
@@ -211,7 +177,6 @@ std::string resolve_hostname(const std::string& hostname) {
                         std::memcpy(ip_parts, data + pointer + 8, 16);
 
                         port = ntohs(port);
-                        port ^= 0x2112;
                         std::string ip_address;
                         for (int i = 0; i < 8; ++i) {
                             if (i != 0) ip_address += ":";
@@ -228,11 +193,11 @@ std::string resolve_hostname(const std::string& hostname) {
             pointer += 4 + attr_length;
         }
     } catch (...) {
-        //close(sock);
+        close(sock);
         throw;
     }
 
-    //close(sock);
+    close(sock);
     return user_ip;
 }
 // Structure to hold the room_id, user_id, and user_ip
@@ -376,24 +341,20 @@ nlohmann::json get_users(const std::string& room) {
     // Initialize CURL
     CURL* curl;
     CURLcode res;
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    
     std::string readBuffer;
 
     curl = curl_easy_init();
-    
     if(curl) {
         curl_easy_setopt(curl, CURLOPT_URL, full_url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
         res = curl_easy_perform(curl);
+        curl_easy_cleanup(curl);
+
         if(res != CURLE_OK) {
             std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
             return {};
         }
-        curl_easy_cleanup(curl);
-       
-        
     }
 
     // Parse the JSON response
@@ -401,7 +362,7 @@ nlohmann::json get_users(const std::string& room) {
 
     // Access the "list" key
     auto listData = data["list"];
-    
+
     return listData;
 }
 
@@ -417,32 +378,14 @@ std::string extract_user_id(const std::string& cnd_value) {
 
 int main() {
     std::string stun_server_url = "stun.broadwayinc.computer:3468";
-    //std::string stun_server_url = "stun.l.google.com:19302";
     int client_port = 1234;
-    
-    #ifndef __linux__      	  
-     WORD sockVersion = MAKEWORD(2, 2);
-     WSADATA data;
-     if (WSAStartup(sockVersion, &data) != 0)
-     {
-         return 0;
-     }
-     #endif
+    std::string candidate = stun_client(stun_server_url, client_port);
 
-    #if defined(__linux__)
-        int stun_socket;
-    #else
-        SOCKET stun_socket;
-    #endif
-    
-    std::string candidate = stun_client(stun_server_url, client_port, stun_socket);
-
-    std::cout << "stun_client>: My IP: " << candidate << std::endl;
+    std::cout << "User IP: " << candidate << std::endl;
 
     std::string room_id = "Id001"; // choose a room id
-    std::string token = "Test-Hello"; // choose a user id
-  
-  
+    std::string token = "helloid"; // choose a user id
+
     auto users = get_users(room_id);
     
     // Get the length of the users list
@@ -454,13 +397,12 @@ int main() {
     for (const auto& user : users) {
         std::cout << "-" << std::endl;
         std::string user_id = extract_user_id(user["uid"]);
-        std::string user_ip = (user["cnd"]);
         std::cout << "User ID: " << user_id << std::endl;
-        std::cout << "User IP: " << user_ip << std::endl;
-        //std::cout << "User IP: " << user["cnd"] << std::endl;
+        std::cout << "User IP: " << user["cnd"] << std::endl;
     }
-    
+
     // websocket
+
     struct lws_context_creation_info info;
     memset(&info, 0, sizeof(info));
     info.port = CONTEXT_PORT_NO_LISTEN;
