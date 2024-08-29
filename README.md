@@ -45,27 +45,6 @@ Run the following commands to deploy the application:
 $ python3 deploy_script.py
 ```
 
-While running the script, you will be asked to provide a stack name, AWS region, and a service name. The stack name is the name of the CloudFormation stack that will be created. The service name is the name of the service that will be created. The AWS region is the region where the stack will be created.
-
-While running the script, you will see the following output:
-
-    Looking for config file [samconfig.toml] :  Not found
-
-    Setting default arguments for 'sam deploy'
-    =========================================
-    Stack Name [sam-app]: stun-punch
-    AWS Region [us-east-1]: 
-    Parameter ServiceName [stunpunch]: 
-    #Shows you resources changes to be deployed and require a 'Y' to initiate deploy
-    Confirm changes before deploy [y/N]: N
-    #SAM needs permission to be able to create roles to connect to the resources in your template
-    Allow SAM CLI IAM role creation [Y/n]: Y
-    #Preserves the state of previously provisioned resources when an operation fails
-    Disable rollback [y/N]: N
-    GetGroup has no authentication. Is this okay? [y/N]: y
-    ...
-
-
 ## Hosting the website remotely
 
 If you are working on remote servers, you can host the website remotely.
