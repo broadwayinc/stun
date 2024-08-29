@@ -187,15 +187,23 @@ std::string resolve_hostname(const std::string& hostname) {
                         std::memcpy(&ip3, data + pointer + 10, 1);
                         std::memcpy(&ip4, data + pointer + 11, 1);
 
-                        port = ntohs(port);
+                        // port = ntohs(port);
                         
                         port = ntohs(port);
                         port ^= 0x2112;
-                        ip1 ^= 0x21;
-                        ip2 ^= 0x12;
-                        ip3 ^= 0xA4;
-                        ip4 ^= 0x42;
+                        // ip1 ^= 0x21;
+                        // ip2 ^= 0x12;
+                        // ip3 ^= 0xA4;
+                        // ip4 ^= 0x42;
                         
+                        // declare and initialize magic word from stun_header
+                        uint8_t magic_word[4];
+                        std::memcpy(magic_word, stun_header + 4, 4);
+                        ip1 ^= magic_word[0];
+                        ip2 ^= magic_word[1];
+                        ip3 ^= magic_word[2];
+                        ip4 ^= magic_word[3];
+
                         user_ip = std::to_string(ip1) + "." + std::to_string(ip2) + "." + std::to_string(ip3) + "." + std::to_string(ip4) + ":" + std::to_string(port);
                         break;
                     } else {
@@ -211,7 +219,23 @@ std::string resolve_hostname(const std::string& hostname) {
                         std::memcpy(ip_parts, data + pointer + 8, 16);
 
                         port = ntohs(port);
-                        port ^= 0x2112;
+
+                        // declare and initialize magic word from stun_header
+                        uint8_t magic_word[16];
+
+                        // fixed magic word
+                        // uint8_t magic_word[16] = {0x21, 0x12, 0xA4, 0x42, 0x21, 0x12, 0xA4, 0x42, 0x21, 0x12, 0xA4, 0x42, 0x21, 0x12, 0xA4, 0x42};
+
+                        std::memcpy(magic_word, stun_header + 4, 16); // copy magic word from stun_header
+
+                        // xor with magic word
+                        port ^= ntohs(0x2112);
+                        for (int i = 0; i < 8; ++i) {
+                            uint16_t part = ntohs(ip_parts[i]);
+                            part ^= (magic_word[2 * i] << 8) | magic_word[2 * i + 1];
+                            ip_parts[i] = htons(part);
+                        }
+
                         std::string ip_address;
                         for (int i = 0; i < 8; ++i) {
                             if (i != 0) ip_address += ":";
