@@ -1,0 +1,1 @@
+g++ stun.cpp -o stun -l curl -l websockets; ./stun;

@@ -28,6 +28,45 @@
 // tobuild: g++ stun.cpp -o stun -l curl -l websockets
 
 #include <stdexcept>
+#include <thread>
+#include <mutex>
+#include <csignal>
+#include <atomic>
+// Global flag to indicate exit request
+std::atomic<bool> exit_requested(false);
+
+// // Global flag to indicate exit request
+// volatile sig_atomic_t exit_requested = 0;
+// Global context variable
+struct lws_context *context = nullptr;
+
+// Mutex for synchronizing access to user_data->message
+std::mutex message_mutex;
+
+// Structure to hold the room_id, user_id, and user_ip
+struct ws_client_data {
+    std::string room_id;
+    std::string user_id;
+    std::string user_ip;
+    std::string message;
+    std::string call;
+};
+
+// Allocate memory for user data and set the room_id, user_id, and user_ip
+ws_client_data *user_data = new ws_client_data;
+
+// Signal handler function
+void handle_signal(int signal) {
+    exit_requested = true;
+    // Perform cleanup here
+    std::cerr << "Closing, performing cleanup..." << std::endl;
+    // Example: lws_context_destroy(context); delete user_data;
+    
+    lws_context_destroy(context);
+    delete user_data; // Free the allocated memory
+    // Forcefully exit the application
+    std::exit(signal);
+}
 
 std::string resolve_hostname(const std::string& hostname) {
     struct addrinfo hints, *res;
@@ -245,12 +284,6 @@ std::string resolve_hostname(const std::string& hostname) {
     //close(sock);
     return user_ip;
 }
-// Structure to hold the room_id, user_id, and user_ip
-struct ws_client_data {
-    std::string room_id;
-    std::string user_id;
-    std::string user_ip;
-};
 
 // Callback function for WebSocket events
 static int callback_ws(struct lws *wsi, enum lws_callback_reasons reason,
@@ -267,7 +300,7 @@ static int callback_ws(struct lws *wsi, enum lws_callback_reasons reason,
             break;
         }
         case LWS_CALLBACK_CLIENT_RECEIVE: {
-            std::cout << "Received data: " << std::string((char *)in, len) << std::endl;
+            std::cout << "Received raw: " << std::string((char *)in, len) << std::endl;
 
             // Parse the received JSON message
             nlohmann::json received_message = nlohmann::json::parse(std::string((char *)in, len));
@@ -295,6 +328,36 @@ static int callback_ws(struct lws *wsi, enum lws_callback_reasons reason,
                     std::cout << "User ID: " << received_message["#user_id"] << std::endl;
                 }
             }
+            else if(received_message.find("#private") != received_message.end()) {
+                std::string private_message = received_message["#private"];
+                if(private_message.find("call_from:") != std::string::npos) {
+                    std::string roomId = private_message.substr(10);
+                    std::cout << "Call from: " << roomId << std::endl;
+                    std::string json_str;
+                    nlohmann::json json_message;
+                    
+                    json_message = {
+                        {"action", "joinRoom"},
+                        {"rid", roomId},
+                        {"token", data->user_id},
+                        {"candidate", data->user_ip}
+                    };
+
+                    json_str = json_message.dump();
+                    std::cout << "Constructed JSON string: " << json_str << std::endl; // Debugging statement
+                    size_t message_len = json_str.length();
+                    unsigned char *buf = new unsigned char[LWS_PRE + message_len];
+                    memcpy(&buf[LWS_PRE], json_str.c_str(), message_len);
+                    lws_write(wsi, &buf[LWS_PRE], message_len, LWS_WRITE_TEXT);
+                    delete[] buf; // Free the allocated memory
+                    std::cout << "Sent" << std::endl;
+
+                    user_data->message.clear();
+                }
+                else {
+                    std::cout << "Private message: " << private_message << std::endl;
+                }
+            }
 
             break;
         }
@@ -312,13 +375,27 @@ static int callback_ws(struct lws *wsi, enum lws_callback_reasons reason,
             // you can get list of joined users registered in the database by calling the get_users function
 
             try {
-                nlohmann::json json_message = {
-                    {"action", "joinRoom"},
-                    {"rid", data->room_id},
-                    {"token", data->user_id},
-                    {"candidate", data->user_ip}
-                };
-                std::string json_str = json_message.dump();
+                std::string json_str;
+                nlohmann::json json_message;
+                if(data->message.empty()) {
+                    std::cerr << "Message is empty" << std::endl;
+
+                    json_message = {
+                        {"action", "joinRoom"},
+                        {"rid", data->room_id},
+                        {"token", data->user_id},
+                        {"candidate", data->user_ip}
+                    };
+                }
+                else {
+                    json_message = {
+                        {"action", "sendMessage"},
+                        {"content", data->message},
+                        {"uid", data->call},
+                        {"token", data->user_id}
+                    };
+                }
+                json_str = json_message.dump();
                 std::cout << "Constructed JSON string: " << json_str << std::endl; // Debugging statement
                 size_t message_len = json_str.length();
                 unsigned char *buf = new unsigned char[LWS_PRE + message_len];
@@ -327,6 +404,7 @@ static int callback_ws(struct lws *wsi, enum lws_callback_reasons reason,
                 delete[] buf; // Free the allocated memory
                 std::cout << "Sent" << std::endl;
 
+                user_data->message.clear();
             } catch (const std::exception& e) {
                 std::cerr << "Exception constructing JSON message: " << e.what() << std::endl;
             }
@@ -425,7 +503,56 @@ std::string extract_user_id(const std::string& cnd_value) {
     return "";
 }
 
+struct lws *wsi = nullptr;
+
+
+// Function to capture user input
+void call_user() {
+    std::string call_msg = "call_from:" + user_data->room_id;
+    {
+        std::lock_guard<std::mutex> lock(message_mutex);
+        user_data->message = call_msg;
+    }
+    // Trigger the writeable callback
+    lws_callback_on_writable(wsi);
+}
+
+// Function to capture user input
+void capture_user_input() {
+    while (!exit_requested) {
+        std::string user_input;
+        std::getline(std::cin, user_input);
+
+        // Check if the user input is "exit"
+        if (user_input == "exit") {
+            exit_requested = true;
+            break;
+        }
+
+        // check if user input contains "call"
+        else if(user_input.find("call:") != std::string::npos) {
+            std::string call_user_id = user_input.substr(5);
+            user_data->call = call_user_id;
+            call_user();
+            continue;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(message_mutex);
+            user_data->message = user_input;
+        }
+
+        // Trigger the writeable callback
+        lws_callback_on_writable(wsi);
+    }
+}
+
+
 int main() {
+    // Register signal handler
+    std::signal(SIGINT, handle_signal);
+    std::signal(SIGTERM, handle_signal);
+    
     std::string stun_server_url = "stun.broadwayinc.computer:3468";
     //std::string stun_server_url = "stun.l.google.com:19302";
     int client_port = 1234;
@@ -449,10 +576,18 @@ int main() {
 
     std::cout << "stun_client>: My IP: " << candidate << std::endl;
 
-    std::string room_id = "Id001"; // choose a room id
-    std::string token = "Test-Hello"; // choose a user id
-  
-  
+
+    std::string token;
+    std::string tocall;
+
+    // Prompt the user for ID
+    std::cout << "Please enter your ID [Only alphanumeric! no space allowed]: ";
+
+    // Read the input value into the token variable
+    std::getline(std::cin, token);
+
+    std::string room_id = token; // use same room_id as user_id
+
     auto users = get_users(room_id);
     
     // Get the length of the users list
@@ -479,7 +614,7 @@ int main() {
     info.uid = -1;
     info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
 
-    struct lws_context *context = lws_create_context(&info);
+    context = lws_create_context(&info);
     if (context == NULL) {
         std::cerr << "lws_create_context failed" << std::endl;
         return -1;
@@ -496,15 +631,13 @@ int main() {
     ccinfo.protocol = protocols[0].name;
     ccinfo.ssl_connection = LCCSCF_USE_SSL;
 
-    // Allocate memory for user data and set the room_id, user_id, and user_ip
-    ws_client_data *user_data = new ws_client_data;
     user_data->room_id = room_id;
     user_data->user_id = token; // Example user ID
     user_data->user_ip = candidate; // Example user IP
     ccinfo.userdata = user_data; // Pass the user data to the connection
 
     // connect to websocket, pass the user data
-    struct lws *wsi = lws_client_connect_via_info(&ccinfo);
+    wsi = lws_client_connect_via_info(&ccinfo);
     if (wsi == NULL) {
         std::cerr << "Failed to initiate connection" << std::endl;
         lws_context_destroy(context);
@@ -512,8 +645,11 @@ int main() {
         return -1;
     }
 
+    // Start the user input thread
+    std::thread input_thread(capture_user_input);
+
     // Run the event loop, exit when exit_requested is set, keep it running
-    while (lws_service(context, 1000) >= 0);
+    while (!exit_requested && lws_service(context, 1000) >= 0);
 
     lws_context_destroy(context);
     delete user_data; // Free the allocated memory
