@@ -4,11 +4,11 @@
   "description": "simple udp stun server",
   "main": "index.js",
   "scripts": {
-    "dev": "node node_modules/basic-node-server/bns.js 3300"
+    "dev": "npx bns 3300"
   },
   "author": "Baksa Gimm",
   "license": "ISC",
   "dependencies": {
-    "basic-node-server": "^1.0.6"
+    "basic-node-server": "^1.0.11"
   }
 }
